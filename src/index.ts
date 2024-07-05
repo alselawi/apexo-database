@@ -74,15 +74,21 @@ export class RequestHandler {
 			return this.corsResponse('Invalid page');
 		}
 
-		let rows: Record<string, string>[] = [];
+		let res: {
+			rows: Record<string, string>[];
+			version: number;
+		} = {
+			rows: [],
+			version: 0,
+		};
 
 		if (version === 0) {
-			rows = await dbHandler.fetchAll(page);
+			res = await dbHandler.fetchAll(page);
 		} else {
-			rows = await dbHandler.getUpdatedRowsSince(version, page);
+			res = await dbHandler.getUpdatedRowsSince(version, page);
 		}
 
-		let output = JSON.stringify(rows);
+		let output = JSON.stringify(res);
 
 		await cache.put({
 			cacheKV: this.env.CACHE,

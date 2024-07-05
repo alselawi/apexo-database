@@ -92,13 +92,14 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
-		expect(rows.length).toBe(3);
-		expect(rows).toEqual([
+		const res = JSON.parse(result.output);
+		expect(res.rows.length).toBe(3);
+		expect(res.rows).toEqual([
 			{ id: '1', data: 'data1' },
 			{ id: '2', data: 'data2' },
 			{ id: '3', data: 'data3' },
 		]);
+		expect(res.version).toBe(0);
 	});
 
 	it('Undefined version is 0 i.e. all rows', async () => {
@@ -111,13 +112,14 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
-		expect(rows.length).toBe(3);
-		expect(rows).toEqual([
+		const res = JSON.parse(result.output);
+		expect(res.rows.length).toBe(3);
+		expect(res.rows).toEqual([
 			{ id: '1', data: 'data1' },
 			{ id: '2', data: 'data2' },
 			{ id: '3', data: 'data3' },
 		]);
+		expect(res.version).toBe(0);
 	});
 
 	it('Invalid version returns error', async () => {
@@ -174,7 +176,10 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		expect(result.output).toBe('[]');
+		expect(JSON.parse(result.output)).toEqual({
+			rows: [],
+			version: 0,
+		});
 	});
 
 	it('Handle GET requests to fetch rows in pages (batches) if they are too many', { timeout: 10000 }, async () => {
@@ -188,8 +193,9 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(1000);
+		expect(JSON.parse(result.output).version).toBe(0);
 
 		const req2 = new Req('http://db.website.com/staff/0/1', {
 			method: 'GET',
@@ -198,7 +204,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler2 = new RequestHandler(req2, env);
 		const result2 = (await (await handler2.handle()).json()) as operationResult;
 		expect(result2.success).toBe(true);
-		const rows2 = JSON.parse(result2.output);
+		const rows2 = JSON.parse(result2.output).rows;
 		expect(rows2.length).toBe(1000);
 
 		const req3 = new Req('http://db.website.com/staff/0/2', {
@@ -208,7 +214,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler3 = new RequestHandler(req3, env);
 		const result3 = (await (await handler3.handle()).json()) as operationResult;
 		expect(result3.success).toBe(true);
-		const rows3 = JSON.parse(result3.output);
+		const rows3 = JSON.parse(result3.output).rows;
 		expect(rows3.length).toBe(0);
 	});
 
@@ -222,7 +228,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(0);
 		expect(rows).toEqual([]);
 	});
@@ -237,7 +243,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(3);
 		expect(rows).toEqual([
 			{ id: '1', data: 'data1' },
@@ -248,7 +254,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler2 = new RequestHandler(req, env);
 		const result2 = (await (await handler2.handle()).json()) as operationResult;
 		expect(result2.success).toBe(true);
-		const rows2 = JSON.parse(result2.output);
+		const rows2 = JSON.parse(result2.output).rows;
 		expect(rows2.length).toBe(3);
 		expect(rows2).toEqual([
 			{ id: '1', data: 'data1' },
@@ -275,7 +281,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(0); // nothing has changed since version 3
 
 		const req2 = new Req('http://db.website.com/staff/2', {
@@ -285,7 +291,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler2 = new RequestHandler(req2, env);
 		const result2 = (await (await handler2.handle()).json()) as operationResult;
 		expect(result2.success).toBe(true);
-		const rows2 = JSON.parse(result2.output);
+		const rows2 = JSON.parse(result2.output).rows;
 		expect(rows2.length).toBe(1); // only 3 has changed since version 2
 		expect(rows2).toEqual([{ id: '3', data: 'data3' }]);
 
@@ -296,7 +302,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler3 = new RequestHandler(req3, env);
 		const result3 = (await (await handler3.handle()).json()) as operationResult;
 		expect(result3.success).toBe(true);
-		const rows3 = JSON.parse(result3.output);
+		const rows3 = JSON.parse(result3.output).rows;
 		expect(rows3.length).toBe(2); // 2 and 3 have changed since version 1
 		expect(rows3).toEqual([
 			{ id: '2', data: 'data2' },
@@ -310,7 +316,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler4 = new RequestHandler(req4, env);
 		const result4 = (await (await handler4.handle()).json()) as operationResult;
 		expect(result4.success).toBe(true);
-		const rows4 = JSON.parse(result4.output);
+		const rows4 = JSON.parse(result4.output).rows;
 		expect(rows4.length).toBe(3); // all rows have changed since version 0
 		expect(rows4).toEqual([
 			{ id: '1', data: 'data1' },
@@ -329,7 +335,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(3);
 		expect(rows).toEqual([
 			{ id: '1', data: 'data1' },
@@ -341,7 +347,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler2 = new RequestHandler(req, env);
 		const result2 = (await (await handler2.handle()).json()) as operationResult;
 		expect(result2.success).toBe(true);
-		const rows2 = JSON.parse(result2.output);
+		const rows2 = JSON.parse(result2.output).rows;
 		expect(rows2.length).toBe(3);
 		expect(rows2).toEqual([
 			{ id: '1', data: 'data1' },
@@ -356,7 +362,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler3 = new RequestHandler(req3, env);
 		const result3 = (await (await handler3.handle()).json()) as operationResult;
 		expect(result3.success).toBe(true);
-		const rows3 = JSON.parse(result3.output);
+		const rows3 = JSON.parse(result3.output).rows;
 		expect(rows3.length).toBe(0);
 	});
 
@@ -453,7 +459,7 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
+		const rows = JSON.parse(result.output).rows;
 		expect(rows.length).toBe(3);
 		expect(rows).toEqual([
 			{ id: '1', data: 'data1' },
@@ -497,13 +503,15 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
-		expect(rows.length).toBe(3);
-		expect(rows).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-			{ id: '3', data: 'data3' },
-		]);
+		const res = JSON.parse(result.output);
+		expect(res).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+				{ id: '3', data: 'data3' },
+			],
+			version: 0,
+		});
 
 		const req2 = new Req('http://db.website.com/staff/1/2', {
 			method: 'DELETE',
@@ -521,6 +529,35 @@ describe('RequestHandler class - handle method', () => {
 		expect(changes.length).toBe(1);
 		expect(changes[0].version).toBe(version);
 		expect(changes[0].ids).toBe('1,2');
+
+		const req3 = new Req('http://db.website.com/staff', {
+			method: 'GET',
+			headers: { Authorization: 'Bearer ' + testToken },
+		}) as unknown as Request;
+
+		const handler3 = new RequestHandler(req3, env);
+		const result3 = (await (await handler3.handle()).json()) as operationResult;
+		expect(result3.success).toBe(true);
+		const res3 = JSON.parse(result3.output);
+		expect(res3).toEqual({
+			rows: [{ id: '3', data: 'data3' }],
+			version,
+		});
+
+
+		const req4 = new Req('http://db.website.com/staff/' + version, {
+			method: 'GET',
+			headers: { Authorization: 'Bearer ' + testToken },
+		}) as unknown as Request;
+
+		const handler4 = new RequestHandler(req4, env);
+		const result4 = (await (await handler4.handle()).json()) as operationResult;
+		expect(result4.success).toBe(true);
+		const res4 = JSON.parse(result4.output);
+		expect(res4).toEqual({
+			rows: [],
+			version, // no changes since version, so version is the same
+		});
 	});
 
 	it('PUT request must have a body', async () => {
@@ -637,13 +674,15 @@ describe('RequestHandler class - handle method', () => {
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
 		expect(result.success).toBe(true);
-		const rows = JSON.parse(result.output);
-		expect(rows.length).toBe(3);
-		expect(rows).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-			{ id: '3', data: 'data3' },
-		]);
+		const res = JSON.parse(result.output);
+		expect(res).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+				{ id: '3', data: 'data3' },
+			],
+			version: 0,
+		});
 
 		const cacheKeys = (await env.CACHE.list()).keys.map((k) => k.name);
 		expect(cacheKeys.length).toBe(2);

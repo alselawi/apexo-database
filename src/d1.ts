@@ -5,12 +5,20 @@ export class D1 {
 	constructor(public db: D1Database, public table: string, public account: string, public cacheKV: KVNamespace) {}
 
 	async fetchAll(page: number) {
-		if (page < 0) return [];
+		if (page < 0)
+			return {
+				rows: [],
+				version: 0,
+			};
 		const statement = this.db.prepare(
 			`SELECT id, data FROM ${this.table} WHERE account = ? LIMIT ${MAX_FETCH_ROWS} OFFSET ${page * MAX_FETCH_ROWS};`
 		);
-		const result = (await statement.bind(this.account).all()).results as Record<string, string>[];
-		return result;
+		const rows = (await statement.bind(this.account).all()).results as Record<string, string>[];
+		const version = await this.latestChangeVersion();
+		return {
+			rows,
+			version,
+		};
 	}
 
 	async fetchRows(ids: string[]) {
@@ -57,26 +65,39 @@ export class D1 {
 	}
 
 	async getUpdatedRowsSince(version: number, page: number) {
-		let ids = [];
-		const cachedIds = await cache.get({ cacheKV: this.cacheKV, cacheKey: version.toString(), account: this.account });
-		if (cachedIds) {
-			ids = JSON.parse(cachedIds);
+		let result = [] as Record<string, string>[];
+		const cachedResult = (await cache.get({ cacheKV: this.cacheKV, cacheKey: version.toString(), account: this.account })) || '';
+		if (cachedResult) {
+			result = JSON.parse(cachedResult);
 		} else {
-			const query = `SELECT ids FROM ${this.table}_changes WHERE account = ? AND version > ? ORDER BY version ASC;`;
-			const result = await this.db.prepare(query).bind(this.account, version).all();
-			ids = result.results.map((row) => (row.ids as string).split(',')).flat();
-			ids = [...new Set(ids)];
+			const query = `SELECT ids, version FROM ${this.table}_changes WHERE account = ? AND version > ? ORDER BY version ASC;`;
+			result = (await this.db.prepare(query).bind(this.account, version).all()).results as Record<string, string>[];
 			await cache.put({
 				cacheKV: this.cacheKV,
 				cacheKey: version.toString(),
-				data: JSON.stringify(ids),
+				data: JSON.stringify(result),
 				tableName: this.table,
 				account: this.account,
 			});
 		}
+
+		let ids = result.map((row) => (row.ids as string).split(',')).flat();
+		ids = [...new Set(ids)];
 		const start = page * MAX_FETCH_ROWS;
 		const end = start + MAX_FETCH_ROWS;
 		ids = ids.slice(start, end);
-		return this.fetchRows(ids);
+		const allRows = await this.fetchRows(ids);
+		const latestVersion = Math.max(...[...result.map((row) => Number(row.version)), version]); // when no changes are found, return the same version
+		return {
+			rows: allRows,
+			version: latestVersion,
+		};
+	}
+
+	async latestChangeVersion() {
+		const query = `SELECT MAX(version) as version FROM ${this.table}_changes WHERE account = ?;`;
+		const result = await this.db.prepare(query).bind(this.account).first();
+		const version = Number(result?.version);
+		return isNaN(version) ? 0 : version;
 	}
 }

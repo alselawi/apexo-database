@@ -53,7 +53,7 @@ Authorization: Bearer your-jwt-token
 ```json
 {
     success: boolean,
-    output: "stringified JSON array"
+    output: "stringified JSON object that has 'version' and 'rows'"
 }
 ```
 
@@ -68,7 +68,7 @@ const response = await fetch('https://your-worker-url/staff/0/0', {
 	},
 });
 const result = await response.json();
-// result is {success: true, output: "[{...}, {...}, {...}]"}
+// result is {success: true, output: "version: 1234, rows: [{...}, {...}, {...}]"}
 
 // get all rows (page 0)
 const response = await fetch('https://your-worker-url/staff', {
@@ -78,7 +78,7 @@ const response = await fetch('https://your-worker-url/staff', {
 	},
 });
 const result = await response.json();
-// result is {success: true, output: "[{...}, {...}, {...}]"}
+// result is {success: true, output: "version: 1234, rows: [{...}, {...}, {...}]"}
 
 // get changed rows that has changes since version 123 (page 3)
 const response = await fetch('https://your-worker-url/123/3', {
@@ -88,7 +88,7 @@ const response = await fetch('https://your-worker-url/123/3', {
 	},
 });
 const result = await response.json();
-// result is {success: true, output: "[{...}, {...}, {...}]"}
+// result is {success: true, output: "version: 1234, rows: [{...}, {...}, {...}]"}
 ```
 
 ---

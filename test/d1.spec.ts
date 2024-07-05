@@ -34,10 +34,13 @@ describe('D1 class - methods', () => {
 		// Fetch all rows
 		const result = await d1.fetchAll(0);
 
-		expect(result).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
+		expect(result).toEqual({
+			version: 0,
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+			],
+		});
 	});
 
 	it('should fetch rows by IDs correctly', async () => {
@@ -106,15 +109,21 @@ describe('D1 class - methods', () => {
 		// Get updated rows since version 0
 		const result = await d1.getUpdatedRowsSince(0, 0);
 
-		expect(result).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
+		expect(result).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+			],
+			version: 1,
+		});
 	});
 
 	it('should handle empty fetchAll correctly', async () => {
 		const result = await d1.fetchAll(0);
-		expect(result).toEqual([]);
+		expect(result).toEqual({
+			version: 0,
+			rows: [],
+		});
 	});
 
 	it('should handle empty fetchRows correctly', async () => {
@@ -130,9 +139,9 @@ describe('D1 class - methods', () => {
 		const allDocs = (await db.prepare(`SELECT id, data FROM test_table WHERE account = 'test_account';`).all()).results;
 		expect(allDocs.length).toBe(1500);
 
-		const resultPage1 = await d1.fetchAll(0);
-		const resultPage2 = await d1.fetchAll(1);
-		const resultPage3 = await d1.fetchAll(3);
+		const resultPage1 = (await d1.fetchAll(0)).rows;
+		const resultPage2 = (await d1.fetchAll(1)).rows;
+		const resultPage3 = (await d1.fetchAll(3)).rows;
 
 		expect(resultPage1.length).toBe(MAX_FETCH_ROWS);
 		expect(resultPage2.length).toBe(500);
@@ -152,10 +161,13 @@ describe('D1 class - methods', () => {
 
 		// First call should populate the cache
 		const firstResult = await d1.getUpdatedRowsSince(0, 0);
-		expect(firstResult).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
+		expect(firstResult).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+			],
+			version: 1,
+		});
 
 		// Modify the data to ensure cache is used
 		await db.exec(`INSERT INTO test_table (id, account, data) VALUES ('3', 'test_account', 'data3');`);
@@ -169,18 +181,24 @@ describe('D1 class - methods', () => {
 		]);
 
 		const secondResult = await d1.getUpdatedRowsSince(0, 0);
-		expect(secondResult).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
+		expect(secondResult).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+			],
+			version: 1, //still in version 1 and the data is the same
+		});
 
 		await cache.nullify({ cacheKV: kv, tableName: 'test_table', account: 'test_account' });
 		const thirdResult = await d1.getUpdatedRowsSince(0, 0);
-		expect(thirdResult).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-			{ id: '3', data: 'data3' },
-		]);
+		expect(thirdResult).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+				{ id: '3', data: 'data3' },
+			],
+			version: 2, // now the version is 2 and the data is updated
+		});
 	});
 
 	it('should handle maximum variables for fetchRows', async () => {
@@ -267,9 +285,23 @@ describe('D1 class - methods', () => {
 		const resultPage2 = await d1.getUpdatedRowsSince(0, 1);
 		const resultPage3 = await d1.getUpdatedRowsSince(0, 2);
 
-		expect(resultPage1.length).toBe(MAX_FETCH_ROWS);
-		expect(resultPage2.length).toBe(MAX_FETCH_ROWS);
-		expect(resultPage3.length).toBe(100);
+		const version1 = resultPage1.version;
+		const version2 = resultPage2.version;
+		const version3 = resultPage3.version;
+
+		expect(version1).toBe(5);
+		expect(version2).toBe(5);
+		expect(version3).toBe(5); // version should be the same for all pages
+
+		const rows1 = resultPage1.rows;
+		const rows2 = resultPage2.rows;
+		const rows3 = resultPage3.rows;
+
+		expect(rows1.length).toBe(MAX_FETCH_ROWS);
+		expect(rows2.length).toBe(MAX_FETCH_ROWS);
+		expect(rows3.length).toBe(100);
+
+		expect(new Set([...rows1.map((x) => x.id), ...rows2.map((x) => x.id), ...rows3.map((x) => x.id)]).size).toBe(2100);
 	});
 
 	it('should handle caching with different versions correctly', async () => {
@@ -280,10 +312,13 @@ describe('D1 class - methods', () => {
 
 		// First call should populate the cache
 		const firstResult = await d1.getUpdatedRowsSince(0, 0);
-		expect(firstResult).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
+		expect(firstResult).toEqual({
+			rows: [
+				{ id: '1', data: 'data1' },
+				{ id: '2', data: 'data2' },
+			],
+			version: 1,
+		});
 
 		// Modify the data and record a new change
 		await db.exec(`INSERT INTO test_table (id, account, data) VALUES ('3', 'test_account', 'data3');`);
@@ -291,29 +326,10 @@ describe('D1 class - methods', () => {
 
 		// Fetch updated rows since version 1 (should get the new data)
 		const resultVersion1 = await d1.getUpdatedRowsSince(1, 0);
-		expect(resultVersion1).toEqual([{ id: '3', data: 'data3' }]);
-	});
-
-	it('should handle caching with different versions correctly', async () => {
-		// Insert some test data into the database
-		await db.exec(`INSERT INTO test_table (id, account, data) VALUES ('1', 'test_account', 'data1');`);
-		await db.exec(`INSERT INTO test_table (id, account, data) VALUES ('2', 'test_account', 'data2');`);
-		await d1.recordChange(1, ['1', '2']);
-
-		// First call should populate the cache
-		const firstResult = await d1.getUpdatedRowsSince(0, 0);
-		expect(firstResult).toEqual([
-			{ id: '1', data: 'data1' },
-			{ id: '2', data: 'data2' },
-		]);
-
-		// Modify the data and record a new change
-		await db.exec(`INSERT INTO test_table (id, account, data) VALUES ('3', 'test_account', 'data3');`);
-		await d1.recordChange(2, ['3']);
-
-		// Fetch updated rows since version 1 (should get the new data)
-		const resultVersion1 = await d1.getUpdatedRowsSince(1, 0);
-		expect(resultVersion1).toEqual([{ id: '3', data: 'data3' }]);
+		expect(resultVersion1).toEqual({
+			rows: [{ id: '3', data: 'data3' }],
+			version: 2,
+		});
 	});
 
 	it('should handle fetchAll with edge cases correctly', async () => {
@@ -324,11 +340,17 @@ describe('D1 class - methods', () => {
 
 		// Test fetchAll with negative page number
 		const negativePageResult = await d1.fetchAll(-1);
-		expect(negativePageResult).toEqual([]);
+		expect(negativePageResult).toEqual({
+			version: 0,
+			rows: [],
+		});
 
 		// Test fetchAll with very large page number
 		const largePageResult = await d1.fetchAll(1000);
-		expect(largePageResult).toEqual([]);
+		expect(largePageResult).toEqual({
+			version: 0,
+			rows: [],
+		});
 	});
 
 	it('should handle fetchRows with edge cases correctly', async () => {
