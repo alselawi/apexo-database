@@ -69,8 +69,8 @@ export class RequestHandler {
 			return this.corsResponse('Invalid version');
 		}
 
-		const page = parseInt(args[1] || '0', 10) || 0;
-		if (!isFinite(page) || page < 0 || isNaN(page)) {
+		const page = Number(args[1] || '0') || 0;
+		if (page < 0 || isNaN(page)) {
 			return this.corsResponse('Invalid page');
 		}
 
@@ -82,7 +82,7 @@ export class RequestHandler {
 			version: 0,
 		};
 
-		if (version === 0) {
+		if (version === 0 || page === Infinity) {
 			res = await dbHandler.fetchAll(page);
 		} else {
 			res = await dbHandler.getUpdatedRowsSince(version, page);

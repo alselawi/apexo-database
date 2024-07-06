@@ -122,6 +122,25 @@ describe('RequestHandler class - handle method', () => {
 		expect(res.version).toBe(0);
 	});
 
+	it.only("Using 0 as a version an Infinity as page number would just give the version and empty rows", async()=>{
+		env.DB.exec(`INSERT INTO staff (id, account, data) VALUES ('1', 'my-account', 'data1');`);
+		env.DB.exec(`INSERT INTO staff (id, account, data) VALUES ('2', 'my-account', 'data2');`);
+		env.DB.exec(`INSERT INTO staff (id, account, data) VALUES ('3', 'my-account', 'data3');`);
+		env.DB.exec(`INSERT INTO staff_changes (version, account, ids) VALUES (1, 'my-account', '1,2,3');`);
+		global.fetch = vi.fn().mockResolvedValue({ json: () => ({ success: true }) });
+		const req = new Req('http://db.website.com/staff/0/Infinity', {
+			method: 'GET',
+			headers: { Authorization: 'Bearer ' + testToken },
+		}) as unknown as Request;
+		const handler = new RequestHandler(req, env);
+		const result = (await (await handler.handle()).json()) as operationResult;
+		console.log(result);
+		expect(result.success).toBe(true);
+		const res = JSON.parse(result.output);
+		expect(res.rows.length).toBe(0);
+		expect(res.version).toBe(1);
+	});
+
 	it('Invalid version returns error', async () => {
 		global.fetch = vi.fn().mockResolvedValue({ json: () => ({ success: true }) });
 		const req = new Req('http://db.website.com/staff/invalid', {

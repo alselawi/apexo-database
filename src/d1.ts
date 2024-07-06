@@ -5,6 +5,14 @@ export class D1 {
 	constructor(public db: D1Database, public table: string, public account: string, public cacheKV: KVNamespace) {}
 
 	async fetchAll(page: number) {
+
+		if(page === Infinity) {
+			return {
+				rows: [],
+				version: await this.latestChangeVersion(),
+			};
+		}
+
 		if (page < 0)
 			return {
 				rows: [],
