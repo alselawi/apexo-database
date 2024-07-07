@@ -5,8 +5,7 @@ export class D1 {
 	constructor(public db: D1Database, public table: string, public account: string, public cacheKV: KVNamespace) {}
 
 	async fetchAll(page: number) {
-
-		if(page === Infinity) {
+		if (page === Infinity) {
 			return {
 				rows: [],
 				version: await this.latestChangeVersion(),
@@ -73,32 +72,76 @@ export class D1 {
 	}
 
 	async getUpdatedRowsSince(version: number, page: number) {
-		let result = [] as Record<string, string>[];
+		let changesData: {
+			latestVersion: number;
+			allIds: string[];
+			idMap: {[key: string]:number};
+			changeRows: {
+				version: number;
+				ids: string[];
+			}[];
+		} = {
+			latestVersion: version,
+			allIds: [],
+			changeRows: [],
+			idMap: {},
+		};
 		const cachedResult = (await cache.get({ cacheKV: this.cacheKV, cacheKey: version.toString(), account: this.account })) || '';
 		if (cachedResult) {
-			result = JSON.parse(cachedResult);
+			changesData = JSON.parse(cachedResult);
 		} else {
 			const query = `SELECT ids, version FROM ${this.table}_changes WHERE account = ? AND version > ? ORDER BY version ASC;`;
-			result = (await this.db.prepare(query).bind(this.account, version).all()).results as Record<string, string>[];
+			const queryResult = (await this.db.prepare(query).bind(this.account, version).all()).results as Record<string, string>[];
+
+			const latestVersion = Math.max(...[...queryResult.map((row) => Number(row.version)), version]);
+
+			const idMap: {[key: string]:number} = {};
+			let changeRows = queryResult.map((row) => {
+				const ids = row.ids.split(',');
+				const currentVersion = Number(row.version);
+				ids.forEach((id) => {
+					if (idMap[id] === undefined || idMap[id] < currentVersion) {
+						idMap[id] = currentVersion;
+					}
+				});
+				return { version: currentVersion, ids };
+			});
+
+			changeRows = changeRows.filter((row) => {
+				row.ids = row.ids.filter((id) => idMap[id] === row.version);
+				return row.ids.length > 0
+			});
+			const allIds = new Set(Object.keys(idMap));
+
+			changesData = {
+				latestVersion,
+				allIds: [...allIds],
+				changeRows,
+				idMap,
+			};
+
 			await cache.put({
 				cacheKV: this.cacheKV,
 				cacheKey: version.toString(),
-				data: JSON.stringify(result),
+				data: JSON.stringify(changesData),
 				tableName: this.table,
 				account: this.account,
 			});
 		}
 
-		let ids = result.map((row) => (row.ids as string).split(',')).flat();
-		ids = [...new Set(ids)];
 		const start = page * MAX_FETCH_ROWS;
 		const end = start + MAX_FETCH_ROWS;
-		ids = ids.slice(start, end);
-		const allRows = await this.fetchRows(ids);
-		const latestVersion = Math.max(...[...result.map((row) => Number(row.version)), version]); // when no changes are found, return the same version
+		changesData.allIds = changesData.allIds.slice(start, end);
+		const fetchedRows = await this.fetchRows(changesData.allIds);
+
+		for (let index = 0; index < fetchedRows.length; index++) {
+			const element = fetchedRows[index];
+			fetchedRows[index].version = changesData.idMap[element.id].toString();
+		}
+
 		return {
-			rows: allRows,
-			version: latestVersion,
+			rows: fetchedRows,
+			version: changesData.latestVersion,
 		};
 	}
 
