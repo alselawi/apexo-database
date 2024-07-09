@@ -57,9 +57,7 @@ export class RequestHandler {
 
 	private async handleGet(dbHandler: D1, args: string[]) {
 		const cacheKey = cache.hash(this.request.url);
-		const cachedResponse = this.request.url.endsWith('version')
-			? ''
-			: await cache.get({ cacheKV: this.env.CACHE, cacheKey, account: dbHandler.account });
+		const cachedResponse = await cache.get({ cacheKV: this.env.CACHE, cacheKey, account: dbHandler.account });
 		if (cachedResponse) {
 			return this.corsResponse(cachedResponse, true);
 		}

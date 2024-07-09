@@ -111,8 +111,8 @@ describe('D1 class - methods', () => {
 
 		expect(result).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '1' },
-				{ id: '2', data: 'data2', version: '1' },
+				{ id: '1', data: 'data1', ts: '1' },
+				{ id: '2', data: 'data2', ts: '1' },
 			],
 			version: 1,
 		});
@@ -163,8 +163,8 @@ describe('D1 class - methods', () => {
 		const firstResult = await d1.getUpdatedRowsSince(0, 0);
 		expect(firstResult).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '1' },
-				{ id: '2', data: 'data2', version: '1' },
+				{ id: '1', data: 'data1', ts: '1' },
+				{ id: '2', data: 'data2', ts: '1' },
 			],
 			version: 1,
 		});
@@ -183,8 +183,8 @@ describe('D1 class - methods', () => {
 		const secondResult = await d1.getUpdatedRowsSince(0, 0);
 		expect(secondResult).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '1' },
-				{ id: '2', data: 'data2', version: '1' },
+				{ id: '1', data: 'data1', ts: '1' },
+				{ id: '2', data: 'data2', ts: '1' },
 			],
 			version: 1, //still in version 1 and the data is the same
 		});
@@ -193,9 +193,9 @@ describe('D1 class - methods', () => {
 		const thirdResult = await d1.getUpdatedRowsSince(0, 0);
 		expect(thirdResult).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '1' },
-				{ id: '2', data: 'data2', version: '1' },
-				{ id: '3', data: 'data3', version: '2' },
+				{ id: '1', data: 'data1', ts: '1' },
+				{ id: '2', data: 'data2', ts: '1' },
+				{ id: '3', data: 'data3', ts: '2' },
 			],
 			version: 2, // now the version is 2 and the data is updated
 		});
@@ -213,9 +213,9 @@ describe('D1 class - methods', () => {
 
 		expect(res).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '3' },
-				{ id: '2', data: 'data2', version: '3' },
-				{ id: '3', data: 'data3', version: '2' },
+				{ id: '1', data: 'data1', ts: '3' },
+				{ id: '2', data: 'data2', ts: '3' },
+				{ id: '3', data: 'data3', ts: '2' },
 			],
 			version: 3,
 		});
@@ -334,8 +334,8 @@ describe('D1 class - methods', () => {
 		const firstResult = await d1.getUpdatedRowsSince(0, 0);
 		expect(firstResult).toEqual({
 			rows: [
-				{ id: '1', data: 'data1', version: '1' },
-				{ id: '2', data: 'data2', version: '1' },
+				{ id: '1', data: 'data1', ts: '1' },
+				{ id: '2', data: 'data2', ts: '1' },
 			],
 			version: 1,
 		});
@@ -347,7 +347,7 @@ describe('D1 class - methods', () => {
 		// Fetch updated rows since version 1 (should get the new data)
 		const resultVersion1 = await d1.getUpdatedRowsSince(1, 0);
 		expect(resultVersion1).toEqual({
-			rows: [{ id: '3', data: 'data3', version: '2' }],
+			rows: [{ id: '3', data: 'data3', ts: '2' }],
 			version: 2,
 		});
 	});

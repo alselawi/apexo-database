@@ -65,6 +65,7 @@ export class D1 {
 	}
 
 	async recordChange(version: number, ids: string[]) {
+		if (ids.length === 0) return;
 		await this.db
 			.prepare(`INSERT INTO ${this.table}_changes (version, account, ids) VALUES ( ?, ?, ?);`)
 			.bind(version, this.account, ids.join(','))
@@ -75,7 +76,7 @@ export class D1 {
 		let changesData: {
 			latestVersion: number;
 			allIds: string[];
-			idMap: {[key: string]:number};
+			idMap: { [key: string]: number };
 			changeRows: {
 				version: number;
 				ids: string[];
@@ -95,7 +96,7 @@ export class D1 {
 
 			const latestVersion = Math.max(...[...queryResult.map((row) => Number(row.version)), version]);
 
-			const idMap: {[key: string]:number} = {};
+			const idMap: { [key: string]: number } = {};
 			let changeRows = queryResult.map((row) => {
 				const ids = row.ids.split(',');
 				const currentVersion = Number(row.version);
@@ -109,7 +110,7 @@ export class D1 {
 
 			changeRows = changeRows.filter((row) => {
 				row.ids = row.ids.filter((id) => idMap[id] === row.version);
-				return row.ids.length > 0
+				return row.ids.length > 0;
 			});
 			const allIds = new Set(Object.keys(idMap));
 
@@ -129,14 +130,13 @@ export class D1 {
 			});
 		}
 
-		const start = page * MAX_FETCH_ROWS;
-		const end = start + MAX_FETCH_ROWS;
-		changesData.allIds = changesData.allIds.slice(start, end);
-		const fetchedRows = await this.fetchRows(changesData.allIds);
+		const start = Math.max(0, page * MAX_FETCH_ROWS);
+		const end = Math.min(changesData.allIds.length, start + MAX_FETCH_ROWS);
+		const fetchedRows = await this.fetchRows(changesData.allIds.slice(start, end));
 
 		for (let index = 0; index < fetchedRows.length; index++) {
 			const element = fetchedRows[index];
-			fetchedRows[index].version = changesData.idMap[element.id].toString();
+			fetchedRows[index].ts = changesData.idMap[element.id].toString();
 		}
 
 		return {
