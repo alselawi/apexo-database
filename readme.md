@@ -1,6 +1,6 @@
-# Sync Server
+# Apexo Database Worker
 
-A cloudflare worker that is intended to work with xWebDB for synchronization multiple databases using cloudflare D1 as a backend database and KV as a cache manager.
+A cloudflare worker that is intended to be used as an API endpoint for Apexo's database.
 
 ### Base URL
 
