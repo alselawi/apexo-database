@@ -1,5 +1,5 @@
 const SUPPORTED_METHODS = ['GET', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'];
-const VALID_TABLES = ['staff', 'patients', 'settings', 'ortho', 'treatments', 'labwork', 'prescriptions', 'appointments'];
+const VALID_TABLES = ['staff', 'patients', 'settings', 'ortho', 'treatments', 'labwork', 'prescriptions', 'appointments', 'backups'];
 const MAX_VARIABLES = 99;
 const MAX_FETCH_ROWS = 1000;
 

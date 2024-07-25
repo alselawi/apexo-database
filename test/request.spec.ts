@@ -134,7 +134,6 @@ describe('RequestHandler class - handle method', () => {
 		}) as unknown as Request;
 		const handler = new RequestHandler(req, env);
 		const result = (await (await handler.handle()).json()) as operationResult;
-		console.log(result);
 		expect(result.success).toBe(true);
 		const res = JSON.parse(result.output);
 		expect(res.rows.length).toBe(0);
