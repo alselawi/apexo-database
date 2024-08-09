@@ -45,7 +45,6 @@ export class D1 {
 	async deleteRows(ids: string[]) {
 		if (ids.length === 0) {
 			// reset everything, the changes and the table
-			// this is implemented for testing purposes
 			const query = `DELETE FROM ${this.table} WHERE account = ?;`;
 			await this.db.prepare(query).bind(this.account).run();
 

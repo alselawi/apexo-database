@@ -113,10 +113,6 @@ export class RequestHandler {
 	}
 
 	private async handleDelete(dbHandler: D1, ids: string[]) {
-		if (ids.length === 0 && dbHandler.account !== 'dev') {
-			return this.corsResponse('No IDs provided');
-		}
-
 		await dbHandler.deleteRows(ids);
 
 		await cache.nullify({ account: dbHandler.account, tableName: dbHandler.table, cacheKV: this.env.CACHE });
