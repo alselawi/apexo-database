@@ -13,7 +13,6 @@ database_id = "006926e9-d5b1-4add-9027-fa7d2cbe5f05"
 binding = "CACHE"
 id = "5aa34447da8c460fb25b36fd5ea65469"
 
-
 [[r2_buckets]]
 binding = "BACKUPS"
 bucket_name = "apexo-backups"

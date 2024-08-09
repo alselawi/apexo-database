@@ -1,6 +1,6 @@
 import { Auth } from './auth';
 import { cache } from './cache';
-import { corsHeaders, corsRes } from './cors';
+import { corsRes } from './cors';
 import { D1 } from './d1';
 import { handleDownload, handleUpload } from './files';
 import { SUPPORTED_METHODS, VALID_TABLES } from './variables';
@@ -17,12 +17,14 @@ export class RequestHandler {
 			return this.corsResponse('OK', true);
 		}
 
+		const dev = this.request.url.startsWith('http://127.0.0.1:8787');
+
 		const authHeader = this.request.headers.get('Authorization');
 		if (!authHeader) {
 			return this.corsResponse('Authorization header is missing');
 		}
 
-		const authResult = await Auth.authenticate(authHeader.split(' ')[1]);
+		const authResult = dev ? { success: true, account: 'dev' } : await Auth.authenticate(authHeader.split(' ')[1]);
 		if (!authResult.success || !authResult.account) {
 			return this.corsResponse('Authorization failed');
 		}
@@ -61,7 +63,7 @@ export class RequestHandler {
 			const filename = args[0];
 			const account = dbHandler.account;
 			// make sure the user is authorized to access the specific backup
-			if (!filename.includes('_' + account + '_')) {
+			if (!filename.startsWith(account + '_')) {
 				return this.corsResponse("You don't have access to this backup", false);
 			}
 			const downloadProcess = await handleDownload(filename, this.env.BACKUPS);
@@ -111,7 +113,7 @@ export class RequestHandler {
 	}
 
 	private async handleDelete(dbHandler: D1, ids: string[]) {
-		if (ids.length === 0) {
+		if (ids.length === 0 && dbHandler.account !== 'dev') {
 			return this.corsResponse('No IDs provided');
 		}
 
@@ -125,8 +127,7 @@ export class RequestHandler {
 	}
 
 	private async handlePut(dbHandler: D1) {
-
-		if(dbHandler.table === 'backups') {
+		if (dbHandler.table === 'backups') {
 			const uploadProcess = await handleUpload(this.request, this.env.BACKUPS, dbHandler.account);
 			return this.corsResponse(uploadProcess.output, uploadProcess.success);
 		}

@@ -43,7 +43,16 @@ export class D1 {
 	}
 
 	async deleteRows(ids: string[]) {
-		if (ids.length === 0) return;
+		if (ids.length === 0) {
+			// reset everything, the changes and the table
+			// this is implemented for testing purposes
+			const query = `DELETE FROM ${this.table} WHERE account = ?;`;
+			await this.db.prepare(query).bind(this.account).run();
+
+			const query2 = `DELETE FROM ${this.table}_changes WHERE account = ?;`;
+			await this.db.prepare(query2).bind(this.account).run();
+			return;
+		}
 		ids = [...new Set(ids)];
 		for (let i = 0; i < ids.length; i += MAX_VARIABLES) {
 			const batch = ids.slice(i, i + MAX_VARIABLES);
